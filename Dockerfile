@@ -1,39 +1,23 @@
-# syntax = docker/dockerfile:1
+# Use Node 18
+FROM node:18
 
-# Adjust NODE_VERSION as desired
-ARG NODE_VERSION=20.18.0
-FROM node:${NODE_VERSION}-slim as base
-
-LABEL fly_launch_runtime="NodeJS"
-
-# NodeJS app lives here
 WORKDIR /app
 
-# Set production environment
-ENV NODE_ENV=production
+# Copy package manifests
+COPY backend/package*.json ./backend/
 
+# Copy frontend assets
+COPY frontend ./frontend
 
-# Throw-away build stage to reduce size of final image
-FROM base as build
+# Install backend dependencies (include dev for tsx runtime)
+WORKDIR /app/backend
+RUN npm install --production=false
 
-# Install packages needed to build node modules
-RUN apt-get update -qq && \
-    apt-get install -y python-is-python3 pkg-config build-essential 
+# Copy backend source
+COPY backend .
 
-# Install node modules
-COPY --link package.json package-lock.json .
-RUN npm install
+# Expose port
+EXPOSE 3000
 
-# Copy application code
-COPY --link . .
-
-
-
-# Final stage for app image
-FROM base
-
-# Copy built application
-COPY --from=build /app /app
-
-# Start the server by default, this can be overwritten at runtime
-CMD [ "npm", "run", "start" ]
+# Start backend (serves frontend + API + WS)
+CMD ["npm", "run", "start"]

@@ -1,7 +1,9 @@
-const API_BASE = window.BLOCKSCOPE_API || "http://localhost:4000";
+const origin = window.location && window.location.origin ? window.location.origin : "http://localhost:4000";
+const API_BASE = window.BLOCKSCOPE_API || origin;
+const API_URL = new URL(API_BASE);
 const WS_URL =
   window.BLOCKSCOPE_WS ||
-  (API_BASE.startsWith("http") ? API_BASE.replace(/^http/, "ws") : "ws://localhost:4000") + "/stream";
+  `${API_URL.protocol === "https:" ? "wss:" : "ws:"}//${API_URL.host}/stream`;
 
 const HISTORY_LIMIT = 300;
 

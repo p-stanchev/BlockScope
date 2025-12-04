@@ -123,6 +123,13 @@ app.get("/", (_req, res) => {
   res.sendFile(path.join(frontendDir, "index.html"));
 });
 
+app.get("*", (req, res, next) => {
+  if (req.path.startsWith("/api") || req.path.startsWith("/stream") || req.path.startsWith("/health")) {
+    return next();
+  }
+  res.sendFile(path.join(frontendDir, "index.html"));
+});
+
 app.get("/health", (_req, res) => {
   const last = latestBlock;
   res.json({
