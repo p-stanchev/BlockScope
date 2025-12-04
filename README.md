@@ -28,25 +28,6 @@ PORT=4000 npm start
 
 WebSocket and API paths are on the same origin: `GET /api/latest`, `GET /api/history`, WS at `/stream`.
 
-## Deploy with Docker / Fly.io
-
-`Dockerfile` is included (Node 18), serves frontend + API + WS on `PORT` (default 3000).
-
-```bash
-fly launch   # generates fly.toml (or use the provided sample)
-fly deploy
-```
-
-Sample `fly.toml` snippet:
-```toml
-app = "blockscope"
-primary_region = "fra"
-[build]
-  dockerfile = "./Dockerfile"
-[env]
-  PORT = "3000"
-```
-
 ## Project Layout
 
 - `backend/` — Node.js + TypeScript ingestion + API + WebSocket stream. Serves the frontend statically.
