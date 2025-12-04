@@ -1,36 +1,32 @@
 # BlockScope — Solana Blockspace Visualizer (MVP)
 
 <img src="./logo.svg" alt="BlockScope logo" width="120">
+
 ![BlockScope Dashboard](./image.png)
 
-BlockScope is a real-time analytics dashboard that shows Solana blockspace usage: compute, fees, congestion, and top programs. The backend streams normalized block data via WebSockets and exposes REST endpoints; the frontend renders a Tailwind-powered live view. The same logo is used as the favicon (`frontend/logo.svg`).
+BlockScope is a real-time analytics dashboard for Solana blockspace usage: compute, fees, congestion, failures, and top programs. The backend streams normalized block data via WebSockets and exposes REST endpoints; the frontend renders a Tailwind-powered live view. The same logo is used as the favicon (`frontend/logo.svg`).
 
 ## Quickstart (local)
 
 ```bash
-# backend
 cd backend
 npm install
-# set your RPC (public is fine but rate-limited)
-echo "RPC_URL=https://api.mainnet-beta.solana.com" > .env
-# run (serves frontend + API + WS)
-npm start   # PORT defaults to 3000
-
-# open in browser
+echo "RPC_URL=https://api.mainnet-beta.solana.com" > .env  # set your RPC endpoint
+npm start  # serves frontend + API + WS on PORT (default 3000)
+# open the app
 open http://localhost:3000
 ```
 
-If you need a different port:
-
+Use a different port:
 ```bash
 PORT=4000 npm start
 ```
 
-WebSocket and API paths are on the same origin: `GET /api/latest`, `GET /api/history`, WS at `/stream`.
+WebSocket and API share the same origin: `GET /api/latest`, `GET /api/history`, WS at `/stream`.
 
 ## Project Layout
 
-- `backend/` — Node.js + TypeScript ingestion + API + WebSocket stream. Serves the frontend statically.
+- `backend/` — Node.js + TypeScript ingestion + API + WebSocket stream, serves frontend.
 - `frontend/` — Static HTML/Tailwind dashboard consuming the stream and REST API.
 
 ## Backend Configuration
