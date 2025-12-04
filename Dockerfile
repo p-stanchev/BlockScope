@@ -16,6 +16,8 @@ RUN npm install --production=false
 # Copy backend source
 COPY backend .
 
+# Ensure workdir
+WORKDIR /app/backend
 # Expose port
 EXPOSE 3000
 
