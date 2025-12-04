@@ -1,4 +1,4 @@
-import { classifyTopPrograms } from "./classifier.js";
+import { classifyProgram, classifyTopPrograms } from "./classifier.js";
 import { BlockMeta, LoadLevel } from "./types.js";
 
 const COMPUTE_CAPACITY_ESTIMATE = 53_000_000; // rough per-block limit
@@ -19,6 +19,7 @@ export function buildBlockMeta(raw: any): BlockMeta {
   const computePerProgram: Record<string, number> = {};
   let voteTxCount = 0;
   let nonVoteTxCount = 0;
+  let unknownPrograms = 0;
 
   for (const tx of txs) {
     const cu = tx.meta?.computeUnitsConsumed ?? 0;
@@ -47,6 +48,8 @@ export function buildBlockMeta(raw: any): BlockMeta {
       }
       if (!pid) continue;
       computePerProgram[pid] = (computePerProgram[pid] ?? 0) + cu;
+      const info = classifyProgram(pid);
+      if (info.name === "Custom Program") unknownPrograms += 1;
     }
   }
 
@@ -54,6 +57,7 @@ export function buildBlockMeta(raw: any): BlockMeta {
   const avgPriorityFee = feeTotalLamports / txCount / 1_000_000_000; // convert to SOL
   const feeTotalSol = feeTotalLamports / 1_000_000_000;
   const load = computeLoadLevel(computeTotal);
+  const fullness = computeTotal / COMPUTE_CAPACITY_ESTIMATE;
 
   const topPrograms = classifyTopPrograms(computePerProgram);
 
@@ -70,7 +74,9 @@ export function buildBlockMeta(raw: any): BlockMeta {
     feeTotal: feeTotalSol,
     avgPriorityFee,
     computePriceRatio: computePriceRatio / txCount,
+    fullness,
     load,
-    topPrograms
+    topPrograms,
+    unknownPrograms
   };
 }

@@ -1,0 +1,11 @@
+{
+  "11111111111111111111111111111111": { "name": "System Program", "category": "System" },
+  "Vote111111111111111111111111111111111111111": { "name": "Vote Program", "category": "Validator" },
+  "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA": { "name": "SPL Token", "category": "Token" },
+  "JUP2n6CikCqQX9G8ENcNNQKc4BFq4Su5N3JfYknzVtd": { "name": "Jupiter v2", "category": "DEX/Aggregator" },
+  "orca2pSQq4eoPYCmcdkE6LN3tqmcoYUPhHjD3CVczbg": { "name": "Orca", "category": "DEX" },
+  "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin": { "name": "Serum DEX", "category": "DEX" },
+  "ComputeBudget111111111111111111111111111111": { "name": "Compute Budget", "category": "System" },
+  "Stake11111111111111111111111111111111111111": { "name": "Stake Program", "category": "Validator" },
+  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr": { "name": "Memo", "category": "System" }
+}

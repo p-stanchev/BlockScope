@@ -1,7 +1,21 @@
 /* Tailwind utilities are provided via CDN; this file holds small overrides. */
 
+:root {
+  --bg-night: #08090c;
+  --bg-mist: #0f1115;
+  --bg-stone: #1b1d24;
+  --bg-ash: #2a2d36;
+  --text-main: #ffffff;
+  --text-muted: #5b5f6b;
+}
+
+body {
+  background: var(--bg-night);
+  color: var(--text-main);
+}
+
 ::selection {
-  background: rgba(60, 223, 255, 0.3);
+  background: rgba(255, 255, 255, 0.25);
 }
 
 .card {
@@ -11,30 +25,30 @@
   backdrop-filter: blur(8px);
 }
 
-.bg-night { background-color: #08090c; }
-.bg-mist { background-color: #0f1115; }
-.bg-stone { background-color: #1b1d24; }
-.bg-ash { background-color: #2a2d36; }
-.text-smoke { color: #5b5f6b; }
-.border-ash { border-color: #2a2d36; }
-.border-stone { border-color: #1b1d24; }
+.bg-night { background-color: var(--bg-night); }
+.bg-mist { background-color: var(--bg-mist); }
+.bg-stone { background-color: var(--bg-stone); }
+.bg-ash { background-color: var(--bg-ash); }
+.text-smoke { color: var(--text-muted); }
+.border-ash { border-color: var(--bg-ash); }
+.border-stone { border-color: var(--bg-stone); }
 
 .bg-grid {
   background-image:
-    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
   background-size: 40px 40px, 40px 40px;
 }
 
 .card-ghost {
-  background: linear-gradient(145deg, rgba(26, 28, 35, 0.9), rgba(16, 17, 21, 0.9));
+  background: linear-gradient(145deg, color-mix(in srgb, var(--bg-stone) 80%, transparent), color-mix(in srgb, var(--bg-mist) 85%, transparent));
   border: 1px solid rgba(88, 92, 104, 0.25);
   border-radius: 22px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
 }
 
 .stat-card {
-  background: rgba(15, 17, 21, 0.9);
+  background: color-mix(in srgb, var(--bg-mist) 92%, transparent);
   border: 1px solid rgba(88, 92, 104, 0.35);
   border-radius: 16px;
   padding: 16px 18px;

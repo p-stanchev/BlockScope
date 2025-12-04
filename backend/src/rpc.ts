@@ -2,9 +2,32 @@ import { Connection } from "@solana/web3.js";
 
 const DEFAULT_COMMITMENT = "confirmed";
 
-export function createRpc(url?: string) {
-  const endpoint = url ?? process.env.RPC_URL ?? "https://api.mainnet-beta.solana.com";
-  return new Connection(endpoint, DEFAULT_COMMITMENT);
+function parseRpcUrls(): string[] {
+  const envList = process.env.RPC_URLS ?? process.env.RPC_URL;
+  if (envList) {
+    return envList
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  return ["https://api.mainnet-beta.solana.com"];
+}
+
+export function createRpcManager() {
+  const endpoints = parseRpcUrls();
+  const connections = endpoints.map((url) => new Connection(url, DEFAULT_COMMITMENT));
+  let index = 0;
+
+  function current() {
+    return connections[index];
+  }
+
+  function advance() {
+    index = (index + 1) % connections.length;
+    return current();
+  }
+
+  return { current, advance, endpoints, get currentEndpoint() { return endpoints[index]; } };
 }
 
 export async function fetchLatestBlock(connection: Connection) {

@@ -3,15 +3,53 @@ const WS_URL =
   window.BLOCKSCOPE_WS ||
   (API_BASE.startsWith("http") ? API_BASE.replace(/^http/, "ws") : "ws://localhost:4000") + "/stream";
 
+const HISTORY_LIMIT = 300;
+
 const state = {
-  history: []
+  history: [],
+  pinned: null,
+  rolling: null
 };
 
-const limit = 150;
+let renderQueued = false;
+
+function scheduleRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    renderAll();
+  });
+}
+
+function normalizeBlock(msg) {
+  return {
+    slot: msg.slot,
+    timestamp: (msg.timestamp || 0) * 1000,
+    txCount: msg.tx_count ?? msg.txCount ?? 0,
+    computeTotal: msg.compute_total ?? msg.computeTotal ?? 0,
+    computePerProgram: msg.program_breakdown || msg.computePerProgram || {},
+    feeTotal: msg.priority_fees ?? msg.feeTotal ?? 0,
+    avgPriorityFee: msg.avg_priority_fee ?? msg.avgPriorityFee ?? 0,
+    load: msg.load || "Low",
+    topPrograms: msg.top_programs || msg.topPrograms || [],
+    voteTxCount: msg.voteTxCount ?? msg.vote_tx_count ?? 0,
+    nonVoteTxCount: msg.nonVoteTxCount ?? msg.non_vote_tx_count ?? 0,
+    blockhash: msg.blockhash || "",
+    parentSlot: msg.parentSlot || 0,
+    computePriceRatio: msg.compute_price_ratio ?? msg.computePriceRatio ?? 0,
+    fullness: msg.fullness ?? msg.fullness ?? 0,
+    rolling: msg.rolling
+  };
+}
 
 function pushHistory(meta) {
-  state.history.unshift(meta);
-  if (state.history.length > limit) state.history.pop();
+  if (state.history.length && state.history[0].slot === meta.slot) {
+    state.history[0] = meta;
+  } else {
+    state.history.unshift(meta);
+  }
+  if (state.history.length > HISTORY_LIMIT) state.history.length = HISTORY_LIMIT;
 }
 
 function loadColor(load) {
@@ -41,49 +79,47 @@ function loadShade(load) {
 }
 
 async function fetchHistory() {
-  const res = await fetch(`${API_BASE}/api/history?count=${limit}`);
+  const res = await fetch(`${API_BASE}/api/history?count=${HISTORY_LIMIT}`);
   const data = await res.json();
   state.history = data.map((b) => ({ ...b, timestamp: (b.timestamp || 0) * 1000 }));
-  renderAll();
+  if (!state.pinned && state.history.length) state.pinned = state.history[0];
+  scheduleRender();
 }
 
 function connectWs() {
   const ws = new WebSocket(WS_URL);
   ws.onmessage = (evt) => {
     const msg = JSON.parse(evt.data);
-    const meta = {
-      slot: msg.slot,
-      timestamp: msg.timestamp * 1000,
-      txCount: msg.tx_count,
-      computeTotal: msg.compute_total,
-      computePerProgram: msg.program_breakdown || {},
-      feeTotal: msg.priority_fees,
-      avgPriorityFee: msg.avg_priority_fee || 0,
-      load: msg.load,
-      topPrograms: msg.top_programs || [],
-      voteTxCount: 0,
-      nonVoteTxCount: 0,
-      blockhash: "",
-      parentSlot: 0,
-      computePriceRatio: 0
-    };
-    pushHistory(meta);
-    renderAll();
+    if (msg.type === "snapshot" && Array.isArray(msg.history)) {
+      state.history = msg.history.map(normalizeBlock).sort((a, b) => b.slot - a.slot);
+      if (!state.pinned && state.history.length) state.pinned = state.history[0];
+      scheduleRender();
+      return;
+    }
+    if (msg.type === "block" || msg.slot) {
+      const meta = normalizeBlock(msg);
+      pushHistory(meta);
+      if (msg.rolling) state.rolling = msg.rolling;
+      if (!state.pinned) state.pinned = meta;
+      scheduleRender();
+    }
   };
-  ws.onclose = () => {
-    setTimeout(connectWs, 1500);
-  };
+  ws.onclose = () => setTimeout(connectWs, 1500);
 }
 
 function renderAll() {
   const latest = state.history[0];
   if (!latest) return;
   renderHeader(latest);
+  renderRolling(latest);
   renderTimeline();
   renderPrograms(latest);
   renderHeatmap();
   renderFeeTrend();
   renderRecent();
+  renderPinned();
+  renderRatioHist();
+  renderVoteMix();
 }
 
 function renderHeader(latest) {
@@ -94,10 +130,43 @@ function renderHeader(latest) {
   const avgFeeEl = document.getElementById("avg-fee");
   slotEl.textContent = latest.slot.toLocaleString();
   loadEl.textContent = latest.load;
-  loadEl.className = `text-xl font-semibold ${loadColor(latest.load).replace("bg-", "text-")}`;
+  loadEl.className = "text-2xl font-semibold text-white";
   computeEl.textContent = `${latest.computeTotal.toLocaleString()} CU`;
   txEl.textContent = `${latest.txCount ?? 0} txs`;
   avgFeeEl.textContent = `${(latest.avgPriorityFee ?? 0).toFixed(9)} SOL avg`;
+}
+
+function renderRolling(latest) {
+  const rolling = state.rolling ?? deriveLocalRolling();
+  const setTop = (id, data) => {
+    const elCompute = document.getElementById(id + "-compute");
+    const elTop = document.getElementById(id + "-top");
+    if (!elCompute || !elTop) return;
+    elCompute.textContent = `${(data.avgCompute || 0).toLocaleString(undefined, { maximumFractionDigits: 0 })} CU`;
+    elTop.textContent =
+      data.topPrograms && data.topPrograms.length
+        ? data.topPrograms.map((p) => p.name || p.programId).join(" · ")
+        : "—";
+  };
+  setTop("roll-60", rolling["60"]);
+  setTop("roll-300", rolling["300"]);
+
+  const spike = document.getElementById("fee-spike");
+  if (spike) {
+    const isSpike = rolling.fee_spike;
+    spike.textContent = isSpike ? "spike" : "stable";
+    spike.className = `px-2 py-0.5 rounded-full text-[10px] ${
+      isSpike ? "bg-white text-black" : "bg-stone text-smoke"
+    }`;
+  }
+  const fullness = document.getElementById("fullness-p90");
+  if (fullness) fullness.textContent = `${Math.round((rolling.fullness_p90 || 0) * 100)}%`;
+  const voteRatio = document.getElementById("vote-ratio");
+  if (voteRatio) {
+    const total = (rolling.vote_ratio?.vote ?? 0) + (rolling.vote_ratio?.nonVote ?? 0) || 1;
+    const votePct = ((rolling.vote_ratio?.vote ?? 0) / total) * 100;
+    voteRatio.textContent = `${votePct.toFixed(1)}% vote · ${(100 - votePct).toFixed(1)}% non-vote`;
+  }
 }
 
 function renderTimeline() {
@@ -108,9 +177,13 @@ function renderTimeline() {
   items.forEach((block) => {
     const height = Math.max((block.computeTotal / maxCompute) * 240, 4);
     const bar = document.createElement("div");
-    bar.className = `flex-1 min-w-[6px] rounded-t-md shadow-inner shadow-black/30 ${loadColor(block.load)}`;
+    bar.className = `flex-1 min-w-[6px] rounded-t-md shadow-inner shadow-black/30 cursor-pointer ${loadColor(block.load)}`;
     bar.style.height = `${height}px`;
-    bar.title = `Slot ${block.slot}\nCompute ${block.computeTotal.toLocaleString()}`;
+    bar.title = `Slot ${block.slot}\nCompute ${block.computeTotal.toLocaleString()}\nFee ${block.feeTotal ?? 0} SOL`;
+    bar.onclick = () => {
+      state.pinned = block;
+      renderPinned();
+    };
     timeline.appendChild(bar);
   });
 }
@@ -127,7 +200,7 @@ function renderPrograms(latest) {
           .map(([programId, compute]) => ({
             programId,
             compute,
-            name: programId.slice(0, 4) + "…" + programId.slice(-4),
+            name: `${programId.slice(0, 4)}…${programId.slice(-4)}`,
             category: "Other"
           }));
 
@@ -196,7 +269,7 @@ function renderFeeTrend() {
 function renderRecent() {
   const list = document.getElementById("recent-blocks");
   list.innerHTML = "";
-  state.history.slice(0, 12).forEach((block) => {
+  state.history.slice(0, 20).forEach((block) => {
     const row = document.createElement("div");
     row.className = "flex items-center justify-between bg-stone border border-ash rounded-xl px-3 py-2";
     const left = document.createElement("div");
@@ -206,10 +279,110 @@ function renderRecent() {
     const right = document.createElement("div");
     right.className = "text-right text-sm text-gray-200";
     right.innerHTML = `<div>${block.txCount ?? 0} txs</div><div class="text-xs text-smoke">${block.computeTotal.toLocaleString()} CU</div>`;
+    row.onclick = () => {
+      state.pinned = block;
+      renderPinned();
+    };
     row.appendChild(left);
     row.appendChild(right);
     list.appendChild(row);
   });
+}
+
+function renderPinned() {
+  const pin = document.getElementById("pinned");
+  if (!pin) return;
+  const block = state.pinned;
+  if (!block) {
+    pin.textContent = "Click a block bar to pin.";
+    return;
+  }
+  const fullnessPct = Math.round((block.fullness || 0) * 1000) / 10;
+  pin.innerHTML = `
+    <div class="text-lg font-semibold">Slot ${block.slot}</div>
+    <div class="text-sm text-smoke">Compute: ${block.computeTotal.toLocaleString()} CU</div>
+    <div class="text-sm text-smoke">Fees: ${block.feeTotal?.toFixed ? block.feeTotal.toFixed(9) : block.feeTotal} SOL</div>
+    <div class="text-sm text-smoke">Load: ${block.load} · Fullness ${fullnessPct}%</div>
+    <div class="text-sm text-smoke">Tx: ${block.txCount ?? 0}</div>
+    <div class="text-sm text-smoke">Top program: ${
+      block.topPrograms?.[0]?.name ?? "—"
+    } (${block.topPrograms?.[0]?.compute?.toLocaleString?.() || "—"} CU)</div>
+  `;
+}
+
+function renderRatioHist() {
+  const container = document.getElementById("ratio-hist");
+  if (!container) return;
+  container.innerHTML = "";
+  const rolling = state.rolling ?? deriveLocalRolling();
+  const buckets = rolling.fee_compute_histogram || [];
+  const max = Math.max(...buckets, 1);
+  buckets.forEach((count, idx) => {
+    const bar = document.createElement("div");
+    bar.className = "flex-1 bg-white/80 rounded-sm shadow-sm shadow-black/30";
+    bar.style.height = `${Math.max((count / max) * 120, 4)}px`;
+    bar.title = `Bucket ${idx + 1}: ${count} blocks`;
+    container.appendChild(bar);
+  });
+}
+
+function renderVoteMix() {
+  const container = document.getElementById("vote-mix");
+  if (!container) return;
+  container.innerHTML = "";
+  const rolling = state.rolling ?? deriveLocalRolling();
+  const vote = rolling.vote_ratio?.vote ?? 0;
+  const nonVote = rolling.vote_ratio?.nonVote ?? 0;
+  const total = vote + nonVote || 1;
+  const votePct = (vote / total) * 100;
+  const bar = document.createElement("div");
+  bar.className = "flex-1 h-3 rounded-full bg-stone overflow-hidden";
+  const innerVote = document.createElement("div");
+  innerVote.className = "h-full bg-white";
+  innerVote.style.width = `${votePct}%`;
+  bar.appendChild(innerVote);
+  container.appendChild(bar);
+  const label = document.createElement("div");
+  label.className = "text-xs text-smoke";
+  label.textContent = `${votePct.toFixed(1)}% vote · ${(100 - votePct).toFixed(1)}% non-vote`;
+  container.appendChild(label);
+}
+
+function deriveLocalRolling() {
+  const now = Date.now();
+  const windows = [60, 300];
+  const rolling = {
+    "60": { windowSeconds: 60, avgCompute: 0, avgFee: 0, topPrograms: [] },
+    "300": { windowSeconds: 300, avgCompute: 0, avgFee: 0, topPrograms: [] },
+    fee_spike: false,
+    fullness_p90: 0,
+    fee_compute_histogram: [0, 0, 0, 0, 0],
+    vote_ratio: { vote: 0, nonVote: 0 }
+  };
+  windows.forEach((w) => {
+    const cutoff = now - w * 1000;
+    const items = state.history.filter((b) => (b.timestamp || 0) >= cutoff);
+    if (!items.length) return;
+    const avgCompute = items.reduce((acc, b) => acc + (b.computeTotal || 0), 0) / items.length;
+    const avgFee = items.reduce((acc, b) => acc + (b.avgPriorityFee || 0), 0) / items.length;
+    const programTotals = {};
+    items.forEach((b) => {
+      for (const [pid, cu] of Object.entries(b.computePerProgram || {})) {
+        programTotals[pid] = (programTotals[pid] || 0) + cu;
+      }
+    });
+    const topPrograms = Object.entries(programTotals)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([pid]) => pid);
+    rolling[w] = {
+      windowSeconds: w,
+      avgCompute,
+      avgFee,
+      topPrograms: topPrograms.map((pid) => ({ programId: pid, name: `${pid.slice(0, 4)}…`, category: "Other", compute: programTotals[pid] }))
+    };
+  });
+  return rolling;
 }
 
 fetchHistory().catch((err) => console.error("history load failed", err));
