@@ -14,9 +14,7 @@ const state = {
 let renderQueued = false;
 const analytics = {
   track: (name, props = {}) => {
-    if (window.posthog && window.posthog.capture) {
-      window.posthog.capture(name, props);
-    }
+    if (window.posthog && window.posthog.capture) window.posthog.capture(name, props);
   }
 };
 
