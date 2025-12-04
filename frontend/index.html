@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BlockScope — Solana Blockspace Visualizer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="./logo.svg">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { display: ["Space Grotesk", "ui-sans-serif", "system-ui"] },
+          colors: {
+            night: "#08090c",
+            mist: "#0f1115",
+            stone: "#1b1d24",
+            ash: "#2a2d36",
+            smoke: "#5b5f6b",
+            frost: "#e5e7eb"
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="./tailwind.css">
+  <body class="bg-night text-white font-display min-h-screen">
+    <div class="fixed inset-0 pointer-events-none opacity-30 bg-grid"></div>
+    <div class="relative max-w-7xl mx-auto px-6 py-10 space-y-6">
+      <header class="flex flex-col gap-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <img src="./logo.svg" alt="BlockScope" class="h-12 w-12 rounded-2xl border border-ash shadow-inner shadow-black/40 bg-stone object-contain p-2">
+              <div>
+                <p class="text-xs uppercase tracking-[0.35em] text-smoke">BlockScope</p>
+                <h1 class="text-3xl md:text-4xl font-semibold">Solana Blockspace Visualizer</h1>
+              </div>
+            </div>
+            <p class="text-smoke mt-3 max-w-3xl text-sm md:text-base">Live view of compute, fees, congestion, and program activity across Solana blocks. Updated every few seconds.</p>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div class="stat-card">
+            <div class="text-xs text-smoke">Latest Slot</div>
+            <div id="slot" class="text-2xl font-semibold mt-1">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-xs text-smoke">Load</div>
+            <div id="load" class="text-2xl font-semibold mt-1">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-xs text-smoke">Compute</div>
+            <div id="compute-total" class="text-2xl font-semibold mt-1">—</div>
+          </div>
+          <div class="stat-card">
+            <div class="text-xs text-smoke">Tx · Avg Fee</div>
+            <div class="flex items-baseline gap-2 mt-1">
+              <span id="tx-count" class="text-2xl font-semibold">—</span>
+              <span id="avg-fee" class="text-smoke text-xs">—</span>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <section class="xl:col-span-2 card-ghost p-6">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-xl font-semibold">Block Timeline</h2>
+              <p class="text-smoke text-sm">Height represents compute; shade shows congestion.</p>
+            </div>
+            <div class="text-xs text-smoke flex gap-3">
+              <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-500"></span>Low</span>
+              <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-400"></span>Medium</span>
+              <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-gray-300"></span>High</span>
+              <span class="flex items-center gap-1"><span class="h-2 w-2 rounded-full bg-white"></span>Critical</span>
+            </div>
+          </div>
+          <div id="timeline" class="h-64 flex items-end gap-1 overflow-x-auto pr-2"></div>
+        </section>
+
+        <section class="card-ghost p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Fee Market</h2>
+            <p class="text-xs text-smoke">Priority fee (avg SOL)</p>
+          </div>
+          <div id="fee-trend" class="h-64 flex items-end gap-1 overflow-hidden"></div>
+          <div class="mt-3 text-sm text-gray-200 flex items-center justify-between">
+            <span id="fee-latest">—</span>
+            <span id="fee-max" class="text-smoke text-xs">max —</span>
+          </div>
+        </section>
+
+        <section class="card-ghost p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Program Breakdown</h2>
+            <p class="text-xs text-smoke">Top consumers by compute</p>
+          </div>
+          <div id="programs" class="space-y-3"></div>
+        </section>
+
+        <section class="card-ghost p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Congestion Heatmap</h2>
+            <p class="text-xs text-smoke">Rolling load per block</p>
+          </div>
+          <div id="heatmap" class="grid grid-cols-[repeat(25,minmax(0,1fr))] gap-1"></div>
+        </section>
+
+        <section class="card-ghost p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-semibold">Recent Blocks</h2>
+            <p class="text-xs text-smoke">Slot · Tx count · Compute</p>
+          </div>
+          <div id="recent-blocks" class="space-y-2 max-h-96 overflow-y-auto pr-2"></div>
+        </section>
+      </main>
+    </div>
+    <div class="hidden bg-ash bg-stone text-smoke border-ash border-stone"></div>
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
