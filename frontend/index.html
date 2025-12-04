@@ -50,28 +50,33 @@
               <h1 class="text-3xl md:text-4xl font-semibold">Solana Blockspace Visualizer</h1>
             </div>
           </div>
-          <p class="text-smoke mt-3 max-w-3xl text-sm md:text-base">Live view of compute, fees, congestion, and program activity across Solana blocks. Updated every few seconds.</p>
+          <p class="text-smoke mt-3 max-w-3xl text-sm md:text-base">Live view of compute, fees, congestion, failures, and program activity across Solana blocks.</p>
         </div>
       </div>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div class="stat-card">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        <div class="stat-card h-full">
           <div class="text-xs text-smoke">Latest Slot</div>
           <div id="slot" class="text-2xl font-semibold mt-1">—</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card h-full">
           <div class="text-xs text-smoke">Load</div>
           <div id="load" class="text-2xl font-semibold mt-1">—</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card h-full">
           <div class="text-xs text-smoke">Compute</div>
           <div id="compute-total" class="text-2xl font-semibold mt-1">—</div>
         </div>
-        <div class="stat-card">
+        <div class="stat-card h-full">
           <div class="text-xs text-smoke">Tx · Avg Fee</div>
           <div class="flex items-baseline gap-2 mt-1">
             <span id="tx-count" class="text-2xl font-semibold">—</span>
             <span id="avg-fee" class="text-smoke text-xs">—</span>
           </div>
+        </div>
+        <div class="stat-card h-full">
+          <div class="text-xs text-smoke">Failure Rate</div>
+          <div id="fail-rate" class="text-2xl font-semibold mt-1">—</div>
+          <div class="text-xs text-smoke mt-1" id="fail-rate-1h">—</div>
         </div>
       </div>
       <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -95,6 +100,8 @@
           <div id="fullness-p90" class="text-xl font-semibold mt-1">—</div>
           <div class="text-xs text-smoke mt-2">Vote vs Non-vote</div>
           <div id="vote-ratio" class="text-xs text-gray-200 mt-1">—</div>
+          <div class="text-xs text-smoke mt-2">Failures (1h)</div>
+          <div id="fail-rate-1h" class="text-xs text-gray-200 mt-1">—</div>
         </div>
       </div>
     </header>
@@ -134,6 +141,14 @@
           <p class="text-xs text-smoke">Top consumers by compute</p>
         </div>
         <div id="programs" class="space-y-3"></div>
+      </section>
+
+      <section class="card-ghost p-6">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">Failure Breakdown</h2>
+          <p class="text-xs text-smoke">Top errors (1h window)</p>
+        </div>
+        <div id="failures" class="space-y-2"></div>
       </section>
 
       <section class="card-ghost p-6">

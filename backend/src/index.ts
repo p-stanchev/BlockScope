@@ -26,7 +26,7 @@ app.use(express.static(frontendDir));
 const storagePath = initStorage();
 
 const PORT = Number(process.env.PORT ?? 4000);
-const HISTORY_LIMIT = 600;
+const HISTORY_LIMIT = 2000;
 const POLL_INTERVAL_MS = 2000;
 
 let latestBlock: BlockMeta | null = null;
@@ -46,8 +46,13 @@ function toStreamMessage(meta: BlockMeta, rolling?: RollingBundle): StreamMessag
     slot: meta.slot,
     timestamp: meta.timestamp,
     tx_count: meta.txCount,
+    failure_count: meta.failureCount,
+    failure_rate: meta.failureRate,
+    error_counts: meta.errorCounts,
     compute_total: meta.computeTotal,
     program_breakdown: meta.computePerProgram,
+    program_failures: meta.programFailures,
+    program_tx_count: meta.programTxCount,
     priority_fees: meta.feeTotal,
     avg_priority_fee: meta.avgPriorityFee,
     top_programs: meta.topPrograms,
@@ -117,6 +122,77 @@ app.get("/api/aggregates/fee-vs-compute", (req, res) => {
   const hours = Math.max(1, Math.min(Number(req.query.hours ?? 24), 720));
   const data = queryFeeVsCompute(hours);
   res.json({ hours, data });
+});
+
+app.get("/api/failures/series", (req, res) => {
+  const count = Math.min(Number(req.query.count ?? 200), HISTORY_LIMIT);
+  const series = history.slice(0, count).map((h) => ({
+    slot: h.slot,
+    timestamp: h.timestamp,
+    failure_rate: h.failureRate,
+    failure_count: h.failureCount,
+    tx_count: h.txCount
+  }));
+  res.json(series);
+});
+
+app.get("/api/failures/top-errors", (req, res) => {
+  const hours = Math.max(1, Math.min(Number(req.query.hours ?? 24), 720));
+  const now = Date.now() / 1000;
+  const cutoff = now - hours * 3600;
+  const errorCounts: Record<string, number> = {};
+  const programFailures: Record<string, number> = {};
+  history
+    .filter((h) => (h.timestamp ?? 0) >= cutoff)
+    .forEach((h) => {
+      for (const [k, v] of Object.entries(h.errorCounts || {})) {
+        errorCounts[k] = (errorCounts[k] ?? 0) + v;
+      }
+      for (const [k, v] of Object.entries(h.programFailures || {})) {
+        programFailures[k] = (programFailures[k] ?? 0) + v;
+      }
+    });
+  res.json({
+    hours,
+    errors: Object.entries(errorCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 15)
+      .map(([error, count]) => ({ error, count })),
+    programFailures
+  });
+});
+
+app.get("/api/program/:programId", (req, res) => {
+  const programId = req.params.programId;
+  const windowSeconds = Math.max(60, Math.min(Number(req.query.window ?? 3600), 86_400));
+  const now = Date.now() / 1000;
+  const items = history.filter((h) => (h.timestamp ?? 0) >= now - windowSeconds && h.computePerProgram[programId]);
+  if (!items.length) {
+    res.status(404).json({ error: "program not found in window", programId });
+    return;
+  }
+  const computeSeries = items.map((h) => ({ slot: h.slot, compute: h.computePerProgram[programId] || 0, timestamp: h.timestamp }));
+  const totalCompute = computeSeries.reduce((acc, v) => acc + v.compute, 0);
+  const txCount = items.reduce((acc, h) => acc + (h.programTxCount[programId] ?? 0), 0);
+  const avgComputePerTx = txCount ? totalCompute / txCount : 0;
+  const computeValues = computeSeries.map((v) => v.compute).sort((a, b) => a - b);
+  const p95 = computeValues.length ? computeValues[Math.floor(0.95 * (computeValues.length - 1))] : 0;
+  const failures = items.reduce((acc, h) => acc + (h.programFailures[programId] ?? 0), 0);
+  const feeRatio =
+    items.reduce((acc, h) => acc + (h.computePriceRatio || 0), 0) / (items.length || 1);
+
+  res.json({
+    programId,
+    windowSeconds,
+    slots: items.length,
+    totalCompute,
+    avgComputePerTx,
+    p95Compute: p95,
+    txCount,
+    failureRate: txCount ? failures / txCount : 0,
+    feeToComputeRatio: feeRatio,
+    computeSeries
+  });
 });
 
 app.get("/", (_req, res) => {
@@ -219,7 +295,7 @@ app.listen(PORT, () => {
 
 function buildRollingBundle(): RollingBundle {
   const now = Date.now() / 1000;
-  const windows = [60, 300] as const;
+  const windows = [60, 300, 3600] as const;
   const bundle: Partial<RollingBundle> = {};
 
   const windowStats = (seconds: number) => {
@@ -283,12 +359,33 @@ function buildRollingBundle(): RollingBundle {
       ? latestBlock.avgPriorityFee > bundle["300"]!.avgFee * 2
       : false;
 
+  const items1h = history.filter((h) => (h.timestamp ?? 0) >= now - 3600);
+  const failCount = items1h.reduce((acc, h) => acc + (h.failureCount || 0), 0);
+  const txCount = items1h.reduce((acc, h) => acc + (h.txCount || 0), 0);
+  const errorCounts: Record<string, number> = {};
+  const programFailures: Record<string, number> = {};
+  items1h.forEach((h) => {
+    for (const [k, v] of Object.entries(h.errorCounts || {})) {
+      errorCounts[k] = (errorCounts[k] ?? 0) + v;
+    }
+    for (const [k, v] of Object.entries(h.programFailures || {})) {
+      programFailures[k] = (programFailures[k] ?? 0) + v;
+    }
+  });
+
   return {
     "60": bundle["60"] ?? { windowSeconds: 60, avgCompute: 0, avgFee: 0, topPrograms: [] },
     "300": bundle["300"] ?? { windowSeconds: 300, avgCompute: 0, avgFee: 0, topPrograms: [] },
+    "3600": bundle["3600"] ?? { windowSeconds: 3600, avgCompute: 0, avgFee: 0, topPrograms: [], failureRate: 0 },
     fee_spike,
     fullness_p90,
     fee_compute_histogram,
-    vote_ratio
+    vote_ratio,
+    failure: {
+      windowSeconds: 3600,
+      failureRate: txCount ? failCount / txCount : 0,
+      errorCounts,
+      programFailures
+    }
   };
 }

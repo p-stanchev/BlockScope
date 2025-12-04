@@ -52,6 +52,9 @@ Endpoints:
 - `GET /api/aggregates/top-programs?hours=24&limit=10`
 - `GET /api/aggregates/fullness-hourly?hours=24`
 - `GET /api/aggregates/fee-vs-compute?hours=24`
+- `GET /api/failures/series?count=200` — per-block failure rate series
+- `GET /api/failures/top-errors?hours=24` — error and program failure counts
+- `GET /api/program/:programId?window=3600` — per-program deep dive
 - `WS /stream` — snapshot replay plus per-block events
 - `/health` — simple health indicator
 - `/` — serves the frontend

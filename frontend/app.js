@@ -34,8 +34,13 @@ function normalizeBlock(msg) {
     slot: msg.slot,
     timestamp: (msg.timestamp || 0) * 1000,
     txCount: msg.tx_count ?? msg.txCount ?? 0,
+    failureCount: msg.failure_count ?? 0,
+    failureRate: msg.failure_rate ?? 0,
+    errorCounts: msg.error_counts || {},
     computeTotal: msg.compute_total ?? msg.computeTotal ?? 0,
     computePerProgram: msg.program_breakdown || msg.computePerProgram || {},
+    programFailures: msg.program_failures || {},
+    programTxCount: msg.program_tx_count || {},
     feeTotal: msg.priority_fees ?? msg.feeTotal ?? 0,
     avgPriorityFee: msg.avg_priority_fee ?? msg.avgPriorityFee ?? 0,
     load: msg.load || "Low",
@@ -126,6 +131,7 @@ function renderAll() {
   renderRolling(latest);
   renderTimeline();
   renderPrograms(latest);
+  renderFailures(latest);
   renderHeatmap();
   renderFeeTrend();
   renderRecent();
@@ -140,12 +146,16 @@ function renderHeader(latest) {
   const computeEl = document.getElementById("compute-total");
   const txEl = document.getElementById("tx-count");
   const avgFeeEl = document.getElementById("avg-fee");
+  const failEl = document.getElementById("fail-rate");
   slotEl.textContent = latest.slot.toLocaleString();
   loadEl.textContent = latest.load;
   loadEl.className = "text-2xl font-semibold text-white";
   computeEl.textContent = `${latest.computeTotal.toLocaleString()} CU`;
   txEl.textContent = `${latest.txCount ?? 0} txs`;
   avgFeeEl.textContent = `${(latest.avgPriorityFee ?? 0).toFixed(9)} SOL avg`;
+  const rolling = state.rolling ?? deriveLocalRolling();
+  const rateNow = rolling.failure?.failureRate ?? latest.failureRate ?? 0;
+  if (failEl) failEl.textContent = `${Math.round(rateNow * 1000) / 10}% fail`;
 }
 
 function renderRolling(latest) {
@@ -178,6 +188,11 @@ function renderRolling(latest) {
     const total = (rolling.vote_ratio?.vote ?? 0) + (rolling.vote_ratio?.nonVote ?? 0) || 1;
     const votePct = ((rolling.vote_ratio?.vote ?? 0) / total) * 100;
     voteRatio.textContent = `${votePct.toFixed(1)}% vote · ${(100 - votePct).toFixed(1)}% non-vote`;
+  }
+  const failWin = document.getElementById("fail-rate-1h");
+  if (failWin) {
+    const rate = rolling.failure?.failureRate ?? 0;
+    failWin.textContent = `1h fail: ${Math.round(rate * 1000) / 10}%`;
   }
 }
 
@@ -364,10 +379,11 @@ function renderVoteMix() {
 
 function deriveLocalRolling() {
   const now = Date.now();
-  const windows = [60, 300];
+  const windows = [60, 300, 3600];
   const rolling = {
     "60": { windowSeconds: 60, avgCompute: 0, avgFee: 0, topPrograms: [] },
     "300": { windowSeconds: 300, avgCompute: 0, avgFee: 0, topPrograms: [] },
+    "3600": { windowSeconds: 3600, avgCompute: 0, avgFee: 0, topPrograms: [], failureRate: 0 },
     fee_spike: false,
     fullness_p90: 0,
     fee_compute_histogram: [0, 0, 0, 0, 0],
@@ -397,6 +413,25 @@ function deriveLocalRolling() {
     };
   });
   return rolling;
+}
+
+function renderFailures(latest) {
+  const container = document.getElementById("failures");
+  if (!container) return;
+  container.innerHTML = "";
+  const rolling = state.rolling ?? deriveLocalRolling();
+  const errors = rolling.failure?.errorCounts || latest.errorCounts || {};
+  const entries = Object.entries(errors).sort((a, b) => b[1] - a[1]).slice(0, 5);
+  if (!entries.length) {
+    container.textContent = "No failures observed in window.";
+    return;
+  }
+  entries.forEach(([err, count]) => {
+    const row = document.createElement("div");
+    row.className = "flex justify-between text-sm text-gray-200";
+    row.innerHTML = `<span class="text-smoke">${err}</span><span>${count}</span>`;
+    container.appendChild(row);
+  });
 }
 
 fetchHistory().catch((err) => console.error("history load failed", err));
