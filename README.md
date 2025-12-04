@@ -4,6 +4,8 @@
 
 Real-time analytics dashboard showing Solana blockspace usage: compute, fees, congestion, and top programs. The backend streams normalized block data via WebSockets and exposes REST endpoints; the frontend renders a Tailwind-powered live view. The same logo is used as the favicon (`frontend/logo.svg`).
 
+![BlockScope Dashboard](./image.png)
+
 ## Project Layout
 
 - `backend/` — Node.js + TypeScript ingestion + API + WebSocket stream.

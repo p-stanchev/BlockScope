@@ -9,6 +9,7 @@ import { createRpcManager, fetchBlockBySlot, fetchLatestBlock } from "./rpc.js";
 import { buildBlockMeta } from "./aggregator.js";
 import { classifyProgram } from "./classifier.js";
 import { BlockMeta, RollingBundle, StreamMessage } from "./types.js";
+import { initStorage, persistBlock, queryTopPrograms, querySlotFullnessPerHour, queryFeeVsCompute } from "./storage.js";
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const frontendDir = path.resolve(__dirname, "../../frontend");
 app.use(express.static(frontendDir));
+const storagePath = initStorage();
 
 const PORT = Number(process.env.PORT ?? 4000);
 const HISTORY_LIMIT = 600;
@@ -98,6 +100,25 @@ app.get("/api/history", (req, res) => {
   res.json(history.slice(0, count));
 });
 
+app.get("/api/aggregates/top-programs", (req, res) => {
+  const hours = Math.max(1, Math.min(Number(req.query.hours ?? 24), 720));
+  const limit = Math.min(Number(req.query.limit ?? 10), 25);
+  const data = queryTopPrograms(hours, limit);
+  res.json({ hours, data });
+});
+
+app.get("/api/aggregates/fullness-hourly", (req, res) => {
+  const hours = Math.max(1, Math.min(Number(req.query.hours ?? 24), 720));
+  const data = querySlotFullnessPerHour(hours);
+  res.json({ hours, data });
+});
+
+app.get("/api/aggregates/fee-vs-compute", (req, res) => {
+  const hours = Math.max(1, Math.min(Number(req.query.hours ?? 24), 720));
+  const data = queryFeeVsCompute(hours);
+  res.json({ hours, data });
+});
+
 app.get("/", (_req, res) => {
   res.sendFile(path.join(frontendDir, "index.html"));
 });
@@ -108,7 +129,8 @@ app.get("/health", (_req, res) => {
     status: last ? "ok" : "warming",
     slot: last?.slot ?? null,
     history: history.length,
-    seconds_since_last: last ? Math.max(0, Math.round(Date.now() / 1000 - last.timestamp)) : null
+    seconds_since_last: last ? Math.max(0, Math.round(Date.now() / 1000 - last.timestamp)) : null,
+    storage: storagePath ? { enabled: true, path: storagePath } : { enabled: false }
   });
 });
 
@@ -116,6 +138,7 @@ async function pollLoop() {
   const rpcManager = createRpcManager();
   let backoffMs = 1000;
   let lastSlot = 0;
+  let consecutiveCritical = 0;
 
   // initial hydrate
   try {
@@ -141,7 +164,16 @@ async function pollLoop() {
       const meta = buildBlockMeta({ ...block, slot });
       lastSlot = slot;
       upsertHistory(meta);
+      persistBlock(meta);
       broadcast(meta);
+      if (meta.load === "Critical") {
+        consecutiveCritical += 1;
+        if (consecutiveCritical >= 3) {
+          logger.warn({ slot, load: meta.load, fullness: meta.fullness }, "ALERT: sustained critical congestion");
+        }
+      } else {
+        consecutiveCritical = 0;
+      }
       backoffMs = 1000;
       logger.debug({ slot }, "processed block");
     } catch (err) {

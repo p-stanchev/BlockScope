@@ -1,10 +1,17 @@
 import { classifyProgram, classifyTopPrograms } from "./classifier.js";
 import { BlockMeta, LoadLevel } from "./types.js";
 
-const COMPUTE_CAPACITY_ESTIMATE = 53_000_000; // rough per-block limit
+const STATIC_COMPUTE_CAPACITY = 53_000_000; // fallback estimate
+let rollingMaxCompute = STATIC_COMPUTE_CAPACITY;
+
+export function updateCapacityEstimate(computeUsed: number) {
+  // simple EMA to adapt to observed peaks
+  const alpha = 0.1;
+  rollingMaxCompute = Math.max(STATIC_COMPUTE_CAPACITY, rollingMaxCompute * (1 - alpha) + computeUsed * alpha);
+}
 
 export function computeLoadLevel(computeUsed: number): LoadLevel {
-  const ratio = computeUsed / COMPUTE_CAPACITY_ESTIMATE;
+  const ratio = computeUsed / rollingMaxCompute;
   if (ratio < 0.4) return "Low";
   if (ratio < 0.7) return "Medium";
   if (ratio < 0.9) return "High";
@@ -56,8 +63,9 @@ export function buildBlockMeta(raw: any): BlockMeta {
   const txCount = txs.length || 1; // avoid zero division
   const avgPriorityFee = feeTotalLamports / txCount / 1_000_000_000; // convert to SOL
   const feeTotalSol = feeTotalLamports / 1_000_000_000;
+  updateCapacityEstimate(computeTotal);
   const load = computeLoadLevel(computeTotal);
-  const fullness = computeTotal / COMPUTE_CAPACITY_ESTIMATE;
+  const fullness = computeTotal / rollingMaxCompute;
 
   const topPrograms = classifyTopPrograms(computePerProgram);
 

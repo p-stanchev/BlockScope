@@ -12,6 +12,13 @@ const state = {
 };
 
 let renderQueued = false;
+const analytics = {
+  track: (name, props = {}) => {
+    if (window.posthog && window.posthog.capture) {
+      window.posthog.capture(name, props);
+    }
+  }
+};
 
 function scheduleRender() {
   if (renderQueued) return;
@@ -101,10 +108,15 @@ function connectWs() {
       pushHistory(meta);
       if (msg.rolling) state.rolling = msg.rolling;
       if (!state.pinned) state.pinned = meta;
+      analytics.track("block_received", { slot: meta.slot, load: meta.load, txs: meta.txCount });
       scheduleRender();
     }
   };
-  ws.onclose = () => setTimeout(connectWs, 1500);
+  ws.onopen = () => analytics.track("ws_connected");
+  ws.onclose = () => {
+    analytics.track("ws_disconnected");
+    setTimeout(connectWs, 1500);
+  };
 }
 
 function renderAll() {
@@ -182,6 +194,7 @@ function renderTimeline() {
     bar.title = `Slot ${block.slot}\nCompute ${block.computeTotal.toLocaleString()}\nFee ${block.feeTotal ?? 0} SOL`;
     bar.onclick = () => {
       state.pinned = block;
+      analytics.track("block_pinned", { slot: block.slot, load: block.load });
       renderPinned();
     };
     timeline.appendChild(bar);
@@ -281,6 +294,7 @@ function renderRecent() {
     right.innerHTML = `<div>${block.txCount ?? 0} txs</div><div class="text-xs text-smoke">${block.computeTotal.toLocaleString()} CU</div>`;
     row.onclick = () => {
       state.pinned = block;
+      analytics.track("block_pinned", { slot: block.slot, load: block.load });
       renderPinned();
     };
     row.appendChild(left);

@@ -7,5 +7,41 @@
   "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin": { "name": "Serum DEX", "category": "DEX" },
   "ComputeBudget111111111111111111111111111111": { "name": "Compute Budget", "category": "System" },
   "Stake11111111111111111111111111111111111111": { "name": "Stake Program", "category": "Validator" },
-  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr": { "name": "Memo", "category": "System" }
+  "MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr": { "name": "Memo", "category": "System" },
+
+  "Raydium9Qe8GkfTWyAjD3Jx6ErJgP4SCS1h4E7qY98x": { "name": "Raydium AMM", "category": "DEX/AMM" },
+  "DezXAZ8z7P5tNrtniAUqkczmPztxHcQChAQJdGjpqG5R": { "name": "Meteora DLMM", "category": "DEX/AMM" },
+  "CLMMm7gR5nW5uwRnWAp1gChJ1GbgrnW1DX3BMudGhA2J": { "name": "Orca Whirlpools", "category": "DEX/AMM" },
+  "GooseFxTURSo1bF7rb9QbGvw8ADxK28TzqVyydEoiGhj": { "name": "GooseFX", "category": "DEX/AMM" },
+  "EoTcUty4K6sYEv8p7b94gDn6u36QEExV8b5CQtG6E7gM": { "name": "Phoenix DEX", "category": "DEX/AMM" },
+  "DJuX7FLkjNFKtb2LADnSzKxYVv8z1gkM1i5kG7Sih4fA": { "name": "Drift", "category": "Perps/Trading" },
+  "98oBK9C8iLZCrSCDtnznWpxFi6wHr6ESG8rSCDc3Z9fU": { "name": "Mango v4", "category": "Perps/Trading" },
+  "DqfRukS9LKftAHV65beNHEPQ6Yi1x4kGf9dm4ZEA1r1h": { "name": "Marginfi", "category": "Lending" },
+  "7bGL2jz1mAorAFz2uVH54camzatoNgtrENcGukdxbYcH": { "name": "Solend", "category": "Lending" },
+  "Cz8kJiTeQbYfpkxSy32d3Kp1fj4ZZWgV9zpRUkN2V9uR": { "name": "Kamino", "category": "Lending/Perps" },
+
+  "HnLcfy9y2VpSVkz8PUHBsM5B28W8QXHbwqhhakosPaQa": { "name": "Helium Network", "category": "Infra" },
+  "Hytbz8af6QYjgxi61zujuin8bAnkDeYeapt9DQ3XDsZn": { "name": "Pyth Oracle", "category": "Oracle" },
+  "SwitchboardV1Main11111111111111111111111111": { "name": "Switchboard v1", "category": "Oracle" },
+  "SW1TCH7iAmdMEUoTZU8L7dzk3ja7VLQMwMiicvKnh8r": { "name": "Switchboard v2", "category": "Oracle" },
+  "heLLoFDr7njWu1Yr2uzsVJQYUjRRuQDnsH9VaMhzy5a": { "name": "Helius RPC Utils", "category": "Infra" },
+  "8HcoqjSpSoRQLuuUzm6U9pJCQwwqMEq8iWm1kTBbZ8h3": { "name": "Chainlink VRF", "category": "Oracle" },
+
+  "3Dq1JkPaQXzZ28QEodw3rpsdpAtJ58hyMBr4iy9rRrqp": { "name": "Tensor", "category": "NFT/Marketplace" },
+  "4bcFeLvknmY2DRWk7qYospy3kKdfGEbSrYkFcuqpE6kL": { "name": "Magic Eden", "category": "NFT/Marketplace" },
+  "CebzrWLs82MSoXJdgCk3aRhbJQeLmHNdJXojcS7miT6J": { "name": "Metaplex Token Metadata", "category": "NFT/Infra" },
+  "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s": { "name": "Metaplex Token Metadata (legacy)", "category": "NFT/Infra" },
+  "mplXNFTuRQvMGahzBoR5n9kffV3HGNyTWJg5cf23W8x": { "name": "Metaplex XNFT", "category": "NFT/Infra" },
+
+  "22gtDfQv1dDeZkkyyDK74PkC2JvLahzDSrUa6msA9KEJ": { "name": "Marinade Finance", "category": "LST" },
+  "BLwTWd2NtiJYj6rHzYKYS7R2x4Y39zuGBY1jchC6Z8js": { "name": "Jito MEV", "category": "MEV" },
+  "JitoSo111111111111111111111111111111111111111": { "name": "Jito Stake", "category": "LST" },
+  "So11111111111111111111111111111111111111112": { "name": "Wrapped SOL", "category": "Token" },
+  "CASHqqb1W4nE1msnkxWqTW7h78a75ouWdwuBwBA6sZp1": { "name": "UXD Stablecoin", "category": "Stablecoin" },
+  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": { "name": "USDC (SPL)", "category": "Stablecoin" },
+  "Es9vMFrzaCERzHS9JhV4pQFm5xGXMcYF5u99bm2z8Z2K": { "name": "USDT (SPL)", "category": "Stablecoin" },
+
+  "11111111111111111111111111111111ComputeBu": { "name": "Compute Budget (alt id)", "category": "System" },
+  "SysvarRent111111111111111111111111111111111": { "name": "Sysvar: Rent", "category": "System" },
+  "SysvarRecentB1ockHashes11111111111111111111": { "name": "Sysvar: Recent Blockhashes", "category": "System" }
 }
